@@ -60,7 +60,7 @@ static bool verifySteamClientHash()
 
 	g_pLog->info
 	(
-		"steamclient.so loaded from %s/%s at %p to %p\n",
+		"steamclient.dll loaded from %s/%s at %p to %p\n",
 		dir.filename().c_str(),
 		path.filename().c_str(),
 		g_modSteamClient.base,
@@ -70,14 +70,14 @@ static bool verifySteamClientHash()
 	try
 	{
 		std::string sha256 = Utils::getFileSHA256(path.c_str());
-		g_pLog->info("steamclient.so hash is %s\n", sha256.c_str());
+		g_pLog->info("steamclient.dll hash is %s\n", sha256.c_str());
 
 		//TODO: Research if there's a better way to compare const char* to std::string
 		return strcmp(sha256.c_str(), EXPECTED_STEAMCLIENT_HASH) == 0;
 	}
 	catch(std::runtime_error& err)
 	{
-		g_pLog->debug("Unable to read steamclient.so hash!\n");
+		g_pLog->debug("Unable to read steamclient.dll hash!\n");
 		return false;
 	}
 }
@@ -88,7 +88,7 @@ static void unload()
 {
 	Hooks::remove();
 
-	//This is absolutely unnessecary for applications loading SLSsteam where it cancels from setup()
+	//This is absolutely unnessecary for applications loading SuperSexySteam where it cancels from setup()
 	//Would be nice to run have for failed load() attempts though 
 	//lm_module_t mod;
 	//if (LM_FindModule("SLSsteam.so", &mod))
@@ -126,7 +126,7 @@ static void setup()
 		return;
 	}
 
-	g_pLog->debug("SLSsteam loading in %s\n", proc.name);
+	g_pLog->debug("SuperSexySteam loading in %s\n", proc.name);
 
 	cleanEnvVar("LD_AUDIT");
 	//TODO: Investigate weird logging. Not like it's necessary anymore
@@ -156,7 +156,7 @@ static void load()
 	}
 
 	//This should never happen, but better be safe than sorry in case I refactor someday
-	if (!LM_FindModule("steamclient.so", &g_modSteamClient))
+	if (!LM_FindModule("steamclient.dll", &g_modSteamClient))
 	{
 		unload();
 		return;
@@ -166,13 +166,13 @@ static void load()
 	{
 		if (g_config.safeMode)
 		{
-			g_pLog->warn("Unknown steamclient.so hash! Aborting...");
+			g_pLog->warn("Unknown steamclient.dll hash! Aborting...");
 			unload();
 			return;
 		}
 		else if (g_config.warnHashMissmatch)
 		{
-			g_pLog->warn("steamclient.so hash missmatch! Please update :)");
+			g_pLog->warn("steamclient.dll hash missmatch! Please update :)");
 		}
 	}
 
@@ -184,18 +184,7 @@ static void load()
 
 	if (g_config.notifyInit)
 	{
-		const auto now = std::chrono::time_point{std::chrono::system_clock::now()};
-		const auto ymd = std::chrono::year_month_day{std::chrono::floor<std::chrono::days>(now)};
-
-		//Funsy easter egg :)
-		if (static_cast<unsigned int>(ymd.month()) == 2 && static_cast<unsigned int>(ymd.day()) == 22)
-		{
-			g_pLog->notify("Happy birthday SLSsteam!");
-		}
-		else
-		{
-			g_pLog->notify("Loaded successfully");
-		}
+		g_pLog->notify("Loaded successfully");
 	}
 }
 
@@ -206,7 +195,7 @@ unsigned int la_version(unsigned int)
 
 unsigned int la_objopen(struct link_map *map, __attribute__((unused)) Lmid_t lmid, __attribute__((unused)) uintptr_t *cookie)
 {
-	if (std::string(map->l_name).ends_with("/steamclient.so"))
+	if (std::string(map->l_name).ends_with("/steamclient.dll"))
 	{
 		load();
 	}

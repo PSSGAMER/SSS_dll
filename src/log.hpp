@@ -76,17 +76,17 @@ class CLog
 
 		std::stringstream notifySS;
 
-		switch(lvl)
+		switch(lvl) // TODO
 		{
 			//TODO: Fix possible breakage when there's only one " in formatted
 			case LogLevel::NotifyShort:
-				notifySS << "notify-send -t 10000 -u \"normal\" \"SLSsteam\" \"" << formatted << "\"";
+				// notifySS << "notify-send -t 10000 -u \"normal\" \"SuperSexySteam\" \"" << formatted << "\"";
 				break;
 			case LogLevel::NotifyLong:
-				notifySS << "notify-send -t 30000 -u \"normal\" \"SLSsteam\" \"" << formatted << "\"";
+				// notifySS << "notify-send -t 30000 -u \"normal\" \"SuperSexySteam\" \"" << formatted << "\"";
 				break;
 			case LogLevel::Warn:
-				notifySS << "notify-send -u \"critical\" \"SLSsteam\" \"" << formatted << "\"";
+				// notifySS << "notify-send -u \"critical\" \"SuperSexySteam\" \"" << formatted << "\"";
 				break;
 
 			default:

@@ -3,6 +3,9 @@
 
 #include <cstdlib>
 #include <memory>
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 CLog::CLog(const char* path) : path(path)
 {
@@ -34,13 +37,17 @@ bool CLog::shouldNotify()
 
 CLog* CLog::createDefaultLog()
 {
-	const char* home = getenv("HOME");
-	if (home)
+	const char* appdata = getenv("APPDATA");
+	if (appdata)
 	{
-		std::stringstream ss;
-		ss << home << "/.SLSsteam.log";
+		fs::path logDir = fs::path(appdata) / "SuperSexySteam";
 
-		return new CLog(ss.str().c_str());
+		// This is safe to call even if it's already there.
+		fs::create_directory(logDir);
+
+		fs::path logFile = logDir / "SSS_dll.log";
+
+		return new CLog(logFile.string().c_str());
 	}
 
 	return nullptr;

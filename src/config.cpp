@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <string>
+#include <windows.h>
 
 //TODO: Move into own .yaml file somehow
 static const char* defaultConfig = 
@@ -47,38 +48,57 @@ static const char* defaultConfig =
 "DenuvoGames:\n\n"
 "#Spoof Denuvo Games owner instead of blocking them\n"
 "DenuvoSpoof: no\n\n"
-"#Automatically disable SLSsteam when steamclient.so does not match a predefined file hash that is known to work\n"
-"#You should enable this if you're planing to use SLSsteam with Steam Deck's gamemode\n"
+"#Automatically disable SuperSexySteam when steamclient.dll does not match a predefined file hash that is known to work\n"
+"#You should enable this if you're planing to use SuperSexySteam with Steam Deck's gamemode\n"
 "SafeMode: no\n\n"
 "#Toggles notifications via notify-send\n"
 "Notifications: yes\n\n"
-"#Warn user via notification when steamclient.so hash differs from known safe hash\n"
+"#Warn user via notification when steamclient.dll hash differs from known safe hash\n"
 "#Mostly useful for development so I don't accidentally miss an update\n"
 "WarnHashMissmatch: no\n\n"
-"#Notify when SLSsteam is done initializing\n"
+"#Notify when SuperSexySteam is done initializing\n"
 "NotifyInit: yes\n\n"
 "#Logs all calls to Steamworks (this makes the logfile huge! Only useful for debugging/analyzing\n"
 "ExtendedLogging: no";
 
 std::string CConfig::getDir()
 {
-	char pathBuf[255];
-	const char* configDir = getenv("XDG_CONFIG_HOME"); //Most users should have this set iirc
-	if (configDir != NULL)
+	HKEY hKey;
+	// Open the registry key to read Steam's installation path.
+	if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\WOW6432Node\\Valve\\Steam", 0, KEY_READ, &hKey) != ERROR_SUCCESS)
 	{
-		sprintf(pathBuf, "%s/SLSsteam", configDir);
-	} else
-	{
-		const char* home = getenv("HOME");
-		sprintf(pathBuf, "%s/.config/SLSsteam", home);
+		g_pLog->notify("Could not find Steam's registry key. Config cannot be loaded or created.");
+		return "";
 	}
 
-	return std::string(pathBuf);
+	char steamPathBuffer[MAX_PATH];
+	DWORD bufferSize = sizeof(steamPathBuffer);
+
+	// Query the "InstallPath" value from the opened key.
+	if (RegQueryValueExA(hKey, "InstallPath", NULL, NULL, (LPBYTE)steamPathBuffer, &bufferSize) != ERROR_SUCCESS)
+	{
+		RegCloseKey(hKey);
+		g_pLog->notify("Could not read Steam's InstallPath value from registry.");
+		return "";
+    }
+	RegCloseKey(hKey);
+
+	std::filesystem::path configPath(steamPathBuffer);
+	configPath /= "config";
+	configPath /= "SuperSexySteam";
+
+	return configPath.string();
 }
 
 std::string CConfig::getPath()
 {
-	return getDir().append("/config.yaml");
+	std::filesystem::path configPath = getDir();
+	if (configPath.empty())
+	{
+		return "";
+	}
+	configPath /= "config.yaml";
+	return configPath.string();
 }
 
 bool CConfig::createFile()
@@ -95,7 +115,7 @@ bool CConfig::createFile()
 				return false;
 			}
 
-			g_pLog->debug("Created config directory at %s\n");
+			g_pLog->debug("Created config directory at %s\n", dir.c_str());
 		}
 
 		FILE* file = fopen(path.c_str(), "w");
@@ -123,20 +143,20 @@ bool CConfig::init()
 bool CConfig::loadSettings()
 {
 	YAML::Node node;
-	try
-	{
+		try
+		{
 		node = YAML::LoadFile(getPath());
-	}
-	catch (YAML::BadFile& bf)
-	{
-		g_pLog->notifyLong("Can not read config.yaml! %s\nUsing defaults", bf.msg.c_str());
-		node = YAML::Node(); //Create empty node and let defaults kick in
-	}
-	catch (YAML::ParserException& pe)
-	{
-		g_pLog->notifyLong("Error parsing config.yaml! %s\nUsing defaults", pe.msg.c_str());
-		node = YAML::Node(); //Create empty node and let defaults kick in
-	}
+		}
+		catch (YAML::BadFile& bf)
+		{
+			g_pLog->notifyLong("Can not read config.yaml! %s\nUsing defaults", bf.msg.c_str());
+			node = YAML::Node(); //Create empty node and let defaults kick in
+		}
+		catch (YAML::ParserException& pe)
+		{
+			g_pLog->notifyLong("Error parsing config.yaml! %s\nUsing defaults", pe.msg.c_str());
+			node = YAML::Node(); //Create empty node and let defaults kick in
+		}
 	
 	disableFamilyLock = getSetting<bool>(node, "DisableFamilyShareLock", true);
 	useWhiteList = getSetting<bool>(node, "UseWhitelist", false);
@@ -259,7 +279,7 @@ bool CConfig::loadSettings()
 					denuvoGames[steamId].emplace(appId);
 
 					//Again, not loggin SteamId because of privacy
-					g_pLog->debug("Added DenuvoGame %u\n", appId, steamId);
+					g_pLog->debug("Added DenuvoGame %u\n", appId);
 				}
 			}
 			catch (...)
