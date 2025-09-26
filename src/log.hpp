@@ -79,7 +79,7 @@ class CLog
 
 		std::stringstream notifySS;
 
-		switch(lvl) // TODO
+		switch(lvl) // TODO for Windows
 		{
 			//TODO: Fix possible breakage when there's only one " in formatted
 			case LogLevel::NotifyShort:
@@ -97,11 +97,11 @@ class CLog
 
 		ofstream << "[" << logLvlToStr(lvl) << "] " << formatted << std::endl;
 
-		if (!notifySS.str().empty())
-		{
-			system(notifySS.str().c_str());
-			ofstream << "[Debug] system(\"" << notifySS.str() << "\")" << std::endl;
-		}
+		// if (!notifySS.str().empty())
+		// {
+		// 	system(notifySS.str().c_str());
+		// 	ofstream << "[Debug] system(\"" << notifySS.str() << "\")" << std::endl;
+		// }
 
 		if (freeFormatted)
 		{
