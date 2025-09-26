@@ -72,9 +72,14 @@ else()
 endif()
 
 # --- Optimization Flags for Release Builds ---
-target_compile_options(SuperSexySteam PRIVATE
-        $<$<CONFIG:Release:$<IF:${MSVC},"/O2 /GL","-O3 -flto=auto">>
-)
+if(MSVC)
+    # Apply MSVC-specific optimization flags ONLY for the Release configuration.
+    target_compile_options(SuperSexySteam PRIVATE "$<CONFIG:Release>:/O2;/GL")
+else()
+    # Apply GCC/Clang-specific optimization flags ONLY for the Release configuration.
+    target_compile_options(SuperSexySteam PRIVATE "$<CONFIG:Release>:-O3;-flto=auto")
+endif()
+
 # Note: For MSVC, /GL (Whole Program Optimization) is the equivalent of -flto.
 # It requires the linker flag /LTCG, which we'll add below.
 if(MSVC)
@@ -96,7 +101,6 @@ find_package(OpenSSL REQUIRED)
 target_link_libraries(SuperSexySteam PRIVATE OpenSSL::SSL OpenSSL::Crypto)
 
 # --- Find and link Pre-compiled Local Libraries ---
-# This logic correctly finds the libraries in the `lib` folder for both Windows and Linux.
 
 # Find libmem in the local 'lib' directory
 find_library(LIBMEM_LIBRARY libmem
