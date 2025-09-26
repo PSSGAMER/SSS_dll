@@ -9,6 +9,7 @@
 #include <openssl/sha.h>
 #include <sstream>
 #include <unordered_set>
+#include <string>
 
 enum class LogLevel : unsigned int
 {
@@ -41,29 +42,31 @@ class CLog
 				return "Notify";
 			case LogLevel::Warn:
 				return "Warn";
-
-			//Shut gcc warning up
+			
+			// Default to satisfy all compilers regarding return paths
 			default:
 				return "Unknown";
 		}
 	}
 
 	template<typename ...Args>
-	__attribute__((hot))
+	// __attribute__((hot)) // REMOVED: This is a GCC/Clang attribute not supported by MSVC.
 	void __log(LogLevel lvl, const char* msg, Args... args)
 	{
-		size_t size = snprintf(nullptr, 0, msg, args...) + 1; //Allocate one more byte for zero termination
+		size_t size = snprintf(nullptr, 0, msg, args...) + 1; // Allocate one more byte for zero termination
 		char* formatted = reinterpret_cast<char*>(malloc(size));
+		if (!formatted) return; // Always check malloc result
 		snprintf(formatted, size, msg, args...);
 
 		bool freeFormatted = true;
 		if (lvl == LogLevel::Once)
 		{
-			//Can't use match functions from unordered_set because it's to unprecise.
-			//We could replace it with our own if we deem it necessary though
-			for(auto& msg : msgCache)
+			// Can't use match functions from unordered_set because it's to unprecise.
+			// We could replace it with our own if we deem it necessary though
+			// Loop variable renamed to avoid shadowing the 'msg' parameter.
+			for(auto& cached_msg : msgCache)
 			{
-				if (strcmp(msg, formatted) == 0)
+				if (strcmp(cached_msg, formatted) == 0)
 				{
 					free(formatted);
 					return;
@@ -88,23 +91,18 @@ class CLog
 			case LogLevel::Warn:
 				// notifySS << "notify-send -u \"critical\" \"SuperSexySteam\" \"" << formatted << "\"";
 				break;
-
 			default:
 				break;
-
 		}
 
-		ofstream << "[" << logLvlToStr(lvl) << "] " << formatted;
+		ofstream << "[" << logLvlToStr(lvl) << "] " << formatted << std::endl;
 
-		if (notifySS.str().size() > 0)
+		if (!notifySS.str().empty())
 		{
-			ofstream << "\n";
-
 			system(notifySS.str().c_str());
-			debug("system(\"%s\")\n", notifySS.str().c_str());
+			ofstream << "[Debug] system(\"" << notifySS.str() << "\")" << std::endl;
 		}
 
-		ofstream.flush();
 		if (freeFormatted)
 		{
 			free(formatted);
@@ -118,37 +116,37 @@ public:
 	~CLog();
 
 	template<typename ...Args>
-	constexpr void once(const char* msg, Args... args)
+	void once(const char* msg, Args... args)
 	{
 		__log(LogLevel::Once, msg, args...);
 	}
 
 	template<typename ...Args>
-	constexpr void debug(const char* msg, Args... args)
+	void debug(const char* msg, Args... args)
 	{
 		__log(LogLevel::Debug, msg, args...);
 	}
 
 	template<typename ...Args>
-	constexpr void info(const char* msg, Args... args)
+	void info(const char* msg, Args... args)
 	{
 		__log(LogLevel::Info, msg, args...);
 	}
 
 	template<typename ...Args>
-	constexpr void notify(const char* msg, Args... args)
+	void notify(const char* msg, Args... args)
 	{
 		__log(LogLevel::NotifyShort, msg, args...);
 	}
 
 	template<typename ...Args>
-	constexpr void notifyLong(const char* msg, Args... args)
+	void notifyLong(const char* msg, Args... args)
 	{
 		__log(LogLevel::NotifyLong, msg, args...);
 	}
 
 	template<typename ...Args>
-	constexpr void warn(const char* msg, Args... args)
+	void warn(const char* msg, Args... args)
 	{
 		__log(LogLevel::Warn, msg, args...);
 	}

@@ -1,32 +1,27 @@
 #include "utils.hpp"
 
-#include <cstring>
 #include <fstream>
 #include <iomanip>
+#include <sstream>
 #include <string>
 #include <vector>
-
 #include <openssl/sha.h>
 
-std::vector<std::string> Utils::strsplit(char *str, const char *delimeter)
+std::vector<std::string> Utils::strsplit(const std::string& str, const std::string& delimeter)
 {
-	auto splits = std::vector<std::string>();
+    std::vector<std::string> splits;
+    size_t start_pos = 0;
+    size_t end_pos;
 
-	char* split = strtok(str, delimeter);
-	splits.emplace(splits.end(), std::string(split));
+    while ((end_pos = str.find(delimeter, start_pos)) != std::string::npos)
+    {
+        splits.push_back(str.substr(start_pos, end_pos - start_pos));
+        start_pos = end_pos + delimeter.length();
+    }
 
-	while(split)
-	{
-		split = strtok(nullptr, delimeter);
-		if (!split)
-		{
-			break;
-		}
+    splits.push_back(str.substr(start_pos));
 
-		splits.emplace(splits.end(), std::string(split));
-	}
-
-	return splits;
+    return splits;
 }
 
 std::string Utils::getFileSHA256(const char *filePath)
@@ -51,4 +46,3 @@ std::string Utils::getFileSHA256(const char *filePath)
 	fs.close();
 	return sha256.str();
 }
-

@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <string>
+#include <fstream>
 #include <windows.h>
 
 //TODO: Move into own .yaml file somehow
@@ -64,18 +65,18 @@ static const char* defaultConfig =
 std::string CConfig::getDir()
 {
 	HKEY hKey;
-	// Open the registry key to read Steam's installation path.
-	if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\WOW6432Node\\Valve\\Steam", 0, KEY_READ, &hKey) != ERROR_SUCCESS)
+		// Open the registry key to read Steam's installation path.
+	if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\WOW6432Node\\Valve\\Steam", 0, KEY_READ, &hKey) != ERROR_SUCCESS)
 	{
 		g_pLog->notify("Could not find Steam's registry key. Config cannot be loaded or created.");
 		return "";
 	}
 
-	char steamPathBuffer[MAX_PATH];
+	wchar_t steamPathBuffer[MAX_PATH];
 	DWORD bufferSize = sizeof(steamPathBuffer);
 
 	// Query the "InstallPath" value from the opened key.
-	if (RegQueryValueExA(hKey, "InstallPath", NULL, NULL, (LPBYTE)steamPathBuffer, &bufferSize) != ERROR_SUCCESS)
+	if (RegQueryValueExW(hKey, L"InstallPath", NULL, NULL, (LPBYTE)steamPathBuffer, &bufferSize) != ERROR_SUCCESS)
 	{
 		RegCloseKey(hKey);
 		g_pLog->notify("Could not read Steam's InstallPath value from registry.");
@@ -83,6 +84,8 @@ std::string CConfig::getDir()
     }
 	RegCloseKey(hKey);
 
+	// std::filesystem::path can be constructed directly from a wide-character string.
+	// .string() will correctly convert the path to a UTF-8 encoded std::string.
 	std::filesystem::path configPath(steamPathBuffer);
 	configPath /= "config";
 	configPath /= "SuperSexySteam";
@@ -118,16 +121,14 @@ bool CConfig::createFile()
 			g_pLog->debug("Created config directory at %s\n", dir.c_str());
 		}
 
-		FILE* file = fopen(path.c_str(), "w");
-		if (!file)
+		std::ofstream configFile(path);
+		if (!configFile.is_open())
 		{
 			g_pLog->notify("Unable to create config at %s!\n", path.c_str());
 			return false;
 		}
 
-		fputs(defaultConfig, file);
-		fflush(file);
-		fclose(file);
+		configFile << defaultConfig;
 	}
 
 	return true;
@@ -143,20 +144,20 @@ bool CConfig::init()
 bool CConfig::loadSettings()
 {
 	YAML::Node node;
-		try
-		{
+	try
+	{
 		node = YAML::LoadFile(getPath());
-		}
-		catch (YAML::BadFile& bf)
-		{
-			g_pLog->notifyLong("Can not read config.yaml! %s\nUsing defaults", bf.msg.c_str());
-			node = YAML::Node(); //Create empty node and let defaults kick in
-		}
-		catch (YAML::ParserException& pe)
-		{
-			g_pLog->notifyLong("Error parsing config.yaml! %s\nUsing defaults", pe.msg.c_str());
-			node = YAML::Node(); //Create empty node and let defaults kick in
-		}
+	}
+	catch (YAML::BadFile& bf)
+	{
+		g_pLog->notifyLong("Can not read config.yaml! %s\nUsing defaults", bf.msg.c_str());
+		node = YAML::Node(); //Create empty node and let defaults kick in
+	}
+	catch (YAML::ParserException& pe)
+	{
+		g_pLog->notifyLong("Error parsing config.yaml! %s\nUsing defaults", pe.msg.c_str());
+		node = YAML::Node(); //Create empty node and let defaults kick in
+	}
 	
 	disableFamilyLock = getSetting<bool>(node, "DisableFamilyShareLock", true);
 	useWhiteList = getSetting<bool>(node, "UseWhitelist", false);
