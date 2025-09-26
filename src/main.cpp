@@ -138,13 +138,6 @@ static void setup()
 		return;
 	}
 
-	//Since we can't statically link everything and some distros seem to respect LD_LIBRARY_PATH
-	//more or less than mine does we just force append those
-	//Hopefully this won't mess anything else up
-	auto ldLibPath = std::string(getenv("LD_LIBRARY_PATH"));
-	ldLibPath.append("/usr/lib:/usr/lib32");
-	setenv("LD_LIBRARY_PATH", ldLibPath.c_str(), true);
-
 	setupSuccess = true;
 }
 
