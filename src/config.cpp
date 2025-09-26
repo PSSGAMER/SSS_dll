@@ -316,7 +316,7 @@ bool CConfig::shouldExcludeAppId(uint32_t appId)
 {
 	bool exclude = false;
 	//Proper way would be with getAppType, but that seems broken so we need to do this instead
-	constexpr uint32_t ONE_BILLION = 1E9; //Implicit cast from double to unsigned int, hopefully this does not break anything
+	constexpr uint32_t ONE_BILLION = 1000000000; //Use integer literal 1 billion or 1E9 to avoid implicit cast
 	if (appId >= ONE_BILLION) //Higher and equal to 10^9 gets used by Steam Internally
 	{
 		exclude = true;

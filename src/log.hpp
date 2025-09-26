@@ -6,7 +6,6 @@
 #include <cstring>
 #include <fstream>
 #include <memory>
-#include <openssl/sha.h>
 #include <sstream>
 #include <unordered_set>
 #include <string>

@@ -38,12 +38,23 @@ set_target_properties(SuperSexySteam PROPERTIES
 )
 
 # =============================================================================
+# Debugging
+# =============================================================================
+# Verbose outputs for debugging
+# set_target_properties(SuperSexySteam PROPERTIES LINK_FLAGS "/VERBOSE")
+
+# =============================================================================
 # Compiler Flags & Options
 # =============================================================================
 # Add the 'include' directory for headers.
-target_include_directories(SuperSexySteam PUBLIC include)
+target_include_directories(SuperSexySteam SYSTEM PUBLIC include)
+
+# Define preprocessor macros for static linking.
+# yaml-cpp uses a standard macro to enable static linking.
+target_compile_definitions(SuperSexySteam PRIVATE YAML_CPP_STATIC_DEFINE)
 
 # --- Optional Toolchain Accelerators (ccache, mold) ---
+
 # Automatically use ccache for compilation if found.
 find_program(CCACHE_FOUND ccache)
 if(CCACHE_FOUND)
@@ -63,9 +74,7 @@ endif()
 
 # --- General Compiler Flags ---
 if(MSVC)
-    # /W4 is the MSVC equivalent of -Wall -Wextra.
     target_compile_options(SuperSexySteam PRIVATE /W4)
-    # MSVC can complain about standard functions, this quiets some of that.
     target_compile_definitions(SuperSexySteam PRIVATE _CRT_SECURE_NO_WARNINGS)
 else()
     target_compile_options(SuperSexySteam PRIVATE -Wall -Wextra -Wpedantic -Wno-error=format-security)
@@ -74,10 +83,16 @@ endif()
 # --- Optimization Flags for Release Builds ---
 if(MSVC)
     # Apply MSVC-specific optimization flags ONLY for the Release configuration.
-    target_compile_options(SuperSexySteam PRIVATE "$<CONFIG:Release>:/O2;/GL")
-else()
+    target_compile_options(SuperSexySteam PRIVATE
+    $<$<CONFIG:Release>:/O2>
+    $<$<CONFIG:Release>:/GL>
+    )
+elseif()
     # Apply GCC/Clang-specific optimization flags ONLY for the Release configuration.
-    target_compile_options(SuperSexySteam PRIVATE "$<CONFIG:Release>:-O3;-flto=auto")
+    target_compile_options(SuperSexySteam PRIVATE
+    $<$<CONFIG:Release>:-O3>
+    $<$<CONFIG:Release>:-flto=auto>
+    )
 endif()
 
 # Note: For MSVC, /GL (Whole Program Optimization) is the equivalent of -flto.
@@ -96,9 +111,15 @@ endif()
 # =============================================================================
 # Dependencies
 # =============================================================================
-# --- Find and link OpenSSL ---
-find_package(OpenSSL REQUIRED)
-target_link_libraries(SuperSexySteam PRIVATE OpenSSL::SSL OpenSSL::Crypto)
+if(MSVC)
+    # On Windows, we use the built-in Cryptography API (CNG).
+    target_link_libraries(SuperSexySteam PRIVATE Bcrypt)
+    target_compile_definitions(SuperSexySteam PRIVATE USE_WINDOWS_CRYPTO)
+else()
+    # On other platforms (e.g., Linux), we rely on OpenSSL.
+    find_package(OpenSSL REQUIRED)
+    target_link_libraries(SuperSexySteam PRIVATE OpenSSL::SSL OpenSSL::Crypto)
+endif()
 
 # --- Find and link Pre-compiled Local Libraries ---
 

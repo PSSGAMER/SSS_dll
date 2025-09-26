@@ -58,7 +58,7 @@ public:
 		{
 			 return node[name].as<T>();
 		}
-		catch (YAML::BadConversion& er)
+		catch (YAML::BadConversion&)
 		{
 			g_pLog->notify("Failed to parse value of %s! Using default\n", name);
 			return defVal;

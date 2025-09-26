@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <cstdio>
+#include <windows.h>
 
 extern lm_module_t g_modSteamClient;
 

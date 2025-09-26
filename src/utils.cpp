@@ -5,7 +5,10 @@
 #include <sstream>
 #include <string>
 #include <vector>
-#include <openssl/sha.h>
+
+#include <windows.h>
+#include <bcrypt.h>
+#pragma comment(lib, "bcrypt.lib")
 
 std::vector<std::string> Utils::strsplit(const std::string& str, const std::string& delimeter)
 {
@@ -24,25 +27,83 @@ std::vector<std::string> Utils::strsplit(const std::string& str, const std::stri
     return splits;
 }
 
+struct BCryptAlgHandle
+{
+    BCRYPT_ALG_HANDLE handle = NULL;
+    ~BCryptAlgHandle() { if (handle) BCryptCloseAlgorithmProvider(handle, 0); }
+};
+
+struct BCryptHashHandle
+{
+    BCRYPT_HASH_HANDLE handle = NULL;
+    ~BCryptHashHandle() { if (handle) BCryptDestroyHash(handle); }
+};
+
 std::string Utils::getFileSHA256(const char *filePath)
 {
-	std::ifstream fs(filePath, std::ios::binary);
-	if (!fs.is_open())
-	{
-		//TODO: Read more about error types in C++ :)
-		throw std::runtime_error("Unable to read file!");
-	}
+    std::ifstream fs(filePath, std::ios::binary);
+    if (!fs.is_open())
+    {
+        throw std::runtime_error("Unable to open file!");
+    }
 
-	std::vector<unsigned char> bytes(std::istreambuf_iterator<char>(fs), {});
-	unsigned char sha256Bytes[SHA256_DIGEST_LENGTH];
-	SHA256(bytes.data(), bytes.size(), sha256Bytes);
+    BCryptAlgHandle hAlg;
+    NTSTATUS status = BCryptOpenAlgorithmProvider(&hAlg.handle, BCRYPT_SHA256_ALGORITHM, NULL, 0);
+    if (!BCRYPT_SUCCESS(status))
+    {
+        throw std::runtime_error("BCryptOpenAlgorithmProvider failed.");
+    }
 
-	std::stringstream sha256;
-	for(int i = 0; i < SHA256_DIGEST_LENGTH; i++)
-	{
-		sha256 << std::hex << std::setw(2) << std::setfill('0') << (int)sha256Bytes[i];
-	}
+    BCryptHashHandle hHash;
+    status = BCryptCreateHash(hAlg.handle, &hHash.handle, NULL, 0, NULL, 0, 0);
+    if (!BCRYPT_SUCCESS(status))
+    {
+        throw std::runtime_error("BCryptCreateHash failed.");
+    }
 
-	fs.close();
-	return sha256.str();
+    // Read and hash the file in chunks for better memory efficiency.
+    const size_t bufferSize = 4096;
+    std::vector<char> buffer(bufferSize);
+    while (fs.good())
+    {
+        fs.read(buffer.data(), bufferSize);
+        std::streamsize bytesRead = fs.gcount();
+        if (bytesRead > 0)
+        {
+            status = BCryptHashData(hHash.handle, (PBYTE)buffer.data(), (ULONG)bytesRead, 0);
+            if (!BCRYPT_SUCCESS(status))
+            {
+                fs.close();
+                throw std::runtime_error("BCryptHashData failed.");
+            }
+        }
+    }
+    fs.close();
+
+    // Get the required size for the hash digest.
+    DWORD cbHash = 0;
+    DWORD cbData = sizeof(DWORD);
+    status = BCryptGetProperty(hAlg.handle, BCRYPT_HASH_LENGTH, (PBYTE)&cbHash, cbData, &cbData, 0);
+    if (!BCRYPT_SUCCESS(status))
+    {
+        throw std::runtime_error("BCryptGetProperty failed to get hash length.");
+    }
+
+    // Finalize the hash and get the result.
+    std::vector<BYTE> hashBytes(cbHash);
+    status = BCryptFinishHash(hHash.handle, hashBytes.data(), cbHash, 0);
+    if (!BCRYPT_SUCCESS(status))
+    {
+        throw std::runtime_error("BCryptFinishHash failed.");
+    }
+
+    // Convert the raw hash bytes to a lowercase hex string.
+    std::stringstream sha256;
+    sha256 << std::hex << std::setfill('0');
+    for (BYTE byte : hashBytes)
+    {
+        sha256 << std::setw(2) << static_cast<int>(byte);
+    }
+
+    return sha256.str();
 }

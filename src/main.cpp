@@ -6,152 +6,88 @@
 
 #include "libmem/libmem.h"
 
+#include <windows.h>
+#include <thread>
 #include <chrono>
+
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
-#include <link.h>
 #include <memory>
 #include <stdexcept>
 #include <string>
-#include <sys/mman.h>
-#include <sys/types.h>
-#include <unistd.h>
 
 static const char* EXPECTED_STEAMCLIENT_HASH = "91b60769f5b05971144adbc02a584efa706817a4191d06d535ebab484f326c2d";
 
-static bool cleanEnvVar(const char* varName)
-{
-	char* var = getenv(varName);
-	if (var == NULL)
-		return false;
-
-	auto splits = Utils::strsplit(var, ":");
-	auto newEnv = std::string();
-
-	for(unsigned int i = 0; i < splits.size(); i++)
-	{
-		auto split = splits.at(i);
-		if (split.ends_with("SLSsteam.so"))
-		{
-			g_pLog->debug("Removed SLSsteam.so from $%s\n", varName);
-			continue;
-		}
-
-		if(newEnv.size() > 0)
-		{
-			newEnv.append(":");
-		}
-		newEnv.append(split);
-	}
-
-	setenv(varName, newEnv.c_str(), true);
-	//g_pLog->debug("Set %s to %s\n", varName, newEnv.c_str());
-
-	return true;
-}
-
 static bool verifySteamClientHash()
 {
-
 	auto path = std::filesystem::path(g_modSteamClient.path);
 	auto dir = path.parent_path();
 
 	g_pLog->info
 	(
-		"steamclient.dll loaded from %s/%s at %p to %p\n",
-		dir.filename().c_str(),
-		path.filename().c_str(),
+		"steamclient.dll loaded from %s\\%s at %p to %p\n",
+		dir.filename().string().c_str(),
+		path.filename().string().c_str(),
 		g_modSteamClient.base,
 		g_modSteamClient.end
 	);
 
 	try
 	{
-		std::string sha256 = Utils::getFileSHA256(path.c_str());
+		std::string sha256 = Utils::getFileSHA256(path.string().c_str());
 		g_pLog->info("steamclient.dll hash is %s\n", sha256.c_str());
 
-		//TODO: Research if there's a better way to compare const char* to std::string
 		return strcmp(sha256.c_str(), EXPECTED_STEAMCLIENT_HASH) == 0;
 	}
-	catch(std::runtime_error& err)
+	catch(const std::runtime_error& err)
 	{
-		g_pLog->debug("Unable to read steamclient.dll hash!\n");
+		g_pLog->warn("Unable to read steamclient.dll hash: %s\n", err.what());
 		return false;
 	}
 }
 
-//Looking at /proc/self/maps it seems like this isn't needed for processes that aren't steam
-//__attribute__((noreturn))
-static void unload()
-{
-	Hooks::remove();
-
-	//This is absolutely unnessecary for applications loading SuperSexySteam where it cancels from setup()
-	//Would be nice to run have for failed load() attempts though 
-	//lm_module_t mod;
-	//if (LM_FindModule("SLSsteam.so", &mod))
-	//{
-	//	//TODO: Investigate crash ?
-	//	//Possibly: Might be because we're unmapping what ever thread we're running in
-	//	//munmap(reinterpret_cast<void*>(mod.base), mod.size);
-	//}
-	//exit(0);
-}
-
-//TODO: Remove when unload() works properly since it should not be needed anymore after that
-static bool setupSuccess = false;
-
-static void setup()
+static bool setup()
 {
 	lm_process_t proc {};
 	if (!LM_GetProcess(&proc))
 	{
-		unload();
-		return;
+		// On failure, the thread will just exit.
+		return false;
 	}
 
-	//Do not do anything in other processes
-	if (strcmp(proc.name, "steam") != 0)
+	// Target the Windows process name.
+	if (strcmp(proc.name, "steam.exe") != 0)
 	{
-		unload();
-		return;
+		return false;
 	}
 
 	g_pLog = std::unique_ptr<CLog>(CLog::createDefaultLog());
 	if (!g_pLog)
 	{
-		unload();
-		return;
+		return false;
 	}
 
 	g_pLog->debug("SuperSexySteam loading in %s\n", proc.name);
 
-	cleanEnvVar("LD_AUDIT");
-	//TODO: Investigate weird logging. Not like it's necessary anymore
-	//cleanEnvVar("LD_PRELOAD");
 
 	if(!g_config.init())
 	{
-		unload();
-		return;
+		g_pLog->warn("Failed to initialize config.\n");
+		return false;
 	}
 
-	setupSuccess = true;
+	return true;
 }
 
 static void load()
 {
-	if (!setupSuccess)
-	{
-		return;
-	}
 
-	//This should never happen, but better be safe than sorry in case I refactor someday
+	// This check is already performed in the Init thread before calling load()
 	if (!LM_FindModule("steamclient.dll", &g_modSteamClient))
 	{
-		unload();
+		g_pLog->warn("load() called but steamclient.dll not found!\n");
 		return;
 	}
 
@@ -159,19 +95,18 @@ static void load()
 	{
 		if (g_config.safeMode)
 		{
-			g_pLog->warn("Unknown steamclient.dll hash! Aborting...");
-			unload();
+			g_pLog->warn("Unknown steamclient.dll hash! Aborting in safe mode...\n");
 			return;
 		}
 		else if (g_config.warnHashMissmatch)
 		{
-			g_pLog->warn("steamclient.dll hash missmatch! Please update :)");
+			g_pLog->warn("steamclient.dll hash mismatch! Please update the expected hash if this is a new version.\n");
 		}
 	}
 
 	if (!Hooks::setup())
 	{
-		unload();
+		g_pLog->warn("Failed to setup hooks!\n");
 		return;
 	}
 
@@ -181,22 +116,72 @@ static void load()
 	}
 }
 
-unsigned int la_version(unsigned int)
+// This is the main function for our initialization thread.
+// It runs outside of the loader lock and handles setup and hooking.
+HMODULE g_hModule = NULL;
+DWORD WINAPI Init(LPVOID lpParam)
 {
-	return LAV_CURRENT;
-}
-
-unsigned int la_objopen(struct link_map *map, __attribute__((unused)) Lmid_t lmid, __attribute__((unused)) uintptr_t *cookie)
-{
-	if (std::string(map->l_name).ends_with("/steamclient.dll"))
+	// Global g_hModule that stores the dll path
+	g_hModule = static_cast<HMODULE>(lpParam); 
+	// 1. Run the initial setup.
+	if (!setup())
 	{
-		load();
+		// If setup fails (e.g., not in steam.exe), we just exit the thread.
+		// No need to unload hooks because none have been placed.
+		return 0;
 	}
+
+	g_pLog->info("Waiting for steamclient.dll to be loaded...\n");
+
+	// 2. Wait for steamclient.dll to be loaded into the process.
+	while (!LM_FindModule("steamclient.dll", &g_modSteamClient))
+	{
+		// Sleep for a short duration to avoid high CPU usage.
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	}
+
+	g_pLog->info("steamclient.dll found. Proceeding with loading hooks.\n");
+
+	// 3. Once the module is found, run the main loading logic.
+	load();
 
 	return 0;
 }
 
-void la_preinit(__attribute__((unused)) uintptr_t *cookie)
+BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
 {
-	setup();
+	UNREFERENCED_PARAMETER(lpReserved); // Shuts up the compiler
+
+	switch (ul_reason_for_call)
+	{
+		case DLL_PROCESS_ATTACH:
+		{
+			// This code runs when the DLL is first injected.
+
+			// Disable DLL_THREAD_ATTACH and DLL_THREAD_DETACH notifications.
+			// This is a performance optimization as we don't need them.
+			DisableThreadLibraryCalls(hModule);
+
+			// Create a new thread to run our initialization code.
+			// to prevent deadlocks (loader lock).
+			HANDLE hThread = CreateThread(nullptr, 0, Init, hModule, 0, nullptr);
+			if (hThread)
+			{
+				// We don't need to manage the thread handle, so we can close it.
+				CloseHandle(hThread);
+			}
+			break;
+		}
+		case DLL_PROCESS_DETACH:
+		{
+			// This code runs when the DLL is being unloaded.
+			if (g_pLog)
+			{
+				g_pLog->info("Unloading SuperSexySteam...\n");
+			}
+			Hooks::remove();
+			break;
+		}
+	}
+	return TRUE;
 }

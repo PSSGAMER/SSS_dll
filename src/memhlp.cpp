@@ -15,11 +15,11 @@ std::vector<int16_t> MemHlp::patternToBytes(const char* pattern)
 	{
 		if (*start == '?')
 		{
-			bytes.emplace_back(-1);
+			bytes.emplace_back(static_cast<int16_t>(-1));
 		}
 		else if (*start != ' ')
 		{
-			bytes.emplace_back(std::strtoul(start, &start, 16));
+			bytes.emplace_back(static_cast<int16_t>(std::strtoul(start, &start, 16)));
 		}
 
 		start++;
