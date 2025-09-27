@@ -45,7 +45,7 @@ CLog* CLog::createDefaultLog()
 		wchar_t exePathBuffer[MAX_PATH];
 		if (GetModuleFileNameW(NULL, exePathBuffer, MAX_PATH) == 0)
 		{
-			fprintf(stderr, "SuperSexySteam Error: GetModuleFileNameW failed.\n");
+			fprintf(stderr, "SuperSexySteam Error: GetModuleFileNameW failed.");
 			return nullptr;
 		}
 		
@@ -62,12 +62,12 @@ CLog* CLog::createDefaultLog()
 	}
 	catch (const fs::filesystem_error& e)
 	{
-		fprintf(stderr, "Filesystem error creating log file: %s\n", e.what());
+		fprintf(stderr, "Filesystem error creating log file: %s", e.what());
 		return nullptr;
 	}
 	catch (const std::runtime_error& e)
 	{
-		fprintf(stderr, "Runtime error creating log file: %s\n", e.what());
+		fprintf(stderr, "Runtime error creating log file: %s", e.what());
 		return nullptr;
 	}
 

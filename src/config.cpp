@@ -102,17 +102,17 @@ bool CConfig::createFile()
 		{
 			if (!std::filesystem::create_directory(dir))
 			{
-				g_pLog->notify("Unable to create config directory at %s!\n", dir.c_str());
+				g_pLog->notify("Unable to create config directory at %s!", dir.c_str());
 				return false;
 			}
 
-			g_pLog->debug("Created config directory at %s\n", dir.c_str());
+			g_pLog->debug("Created config directory at %s", dir.c_str());
 		}
 
 		std::ofstream configFile(path);
 		if (!configFile.is_open())
 		{
-			g_pLog->notify("Unable to create config at %s!\n", path.c_str());
+			g_pLog->notify("Unable to create config at %s!", path.c_str());
 			return false;
 		}
 
@@ -159,16 +159,16 @@ bool CConfig::loadSettings()
 	denuvoSpoof = getSetting<bool>(node, "DenuvoSpoof", false);
 
 	//TODO: Create smart logging function to log them automatically via getSetting
-	g_pLog->info("DisableFamilyShareLock: %i\n", disableFamilyLock);
-	g_pLog->info("UseWhitelist: %i\n", useWhiteList);
-	g_pLog->info("AutoFilterList: %i\n", automaticFilter);
-	g_pLog->info("PlayNotOwnedGames: %i\n", playNotOwnedGames);
-	g_pLog->info("SafeMode: %i\n", safeMode);
-	g_pLog->info("Notifications: %i\n", notifications);
-	g_pLog->info("WarnHashMissmatch: %i\n", warnHashMissmatch);
-	g_pLog->info("NotifyInit: %i\n", notifyInit);
-	g_pLog->info("ExtendedLogging: %i\n", extendedLogging);
-	g_pLog->info("DenuvoSpoof: %i\n", denuvoSpoof);
+	g_pLog->info("DisableFamilyShareLock: %i", disableFamilyLock);
+	g_pLog->info("UseWhitelist: %i", useWhiteList);
+	g_pLog->info("AutoFilterList: %i", automaticFilter);
+	g_pLog->info("PlayNotOwnedGames: %i", playNotOwnedGames);
+	g_pLog->info("SafeMode: %i", safeMode);
+	g_pLog->info("Notifications: %i", notifications);
+	g_pLog->info("WarnHashMissmatch: %i", warnHashMissmatch);
+	g_pLog->info("NotifyInit: %i", notifyInit);
+	g_pLog->info("ExtendedLogging: %i", extendedLogging);
+	g_pLog->info("DenuvoSpoof: %i", denuvoSpoof);
 
 	//TODO: Create function to parse these kinda nodes, instead of c+p them
 	const auto appIdsNode = node["AppIds"];
@@ -180,7 +180,7 @@ bool CConfig::loadSettings()
 			{
 				uint32_t appId = appIdNode.as<uint32_t>();
 				this->appIds.emplace(appId);
-				g_pLog->info("Added %u to AppIds\n", appId);
+				g_pLog->info("Added %u to AppIds", appId);
 			}
 			catch(...)
 			{
@@ -202,7 +202,7 @@ bool CConfig::loadSettings()
 			{
 				uint32_t appId = appIdNode.as<uint32_t>();
 				this->addedAppIds.emplace(appId);
-				g_pLog->info("Added %u to AdditionalApps\n", appId);
+				g_pLog->info("Added %u to AdditionalApps", appId);
 			}
 			catch(...)
 			{
@@ -226,7 +226,7 @@ bool CConfig::loadSettings()
 
 				CDlcData data;
 				data.parentId = parentId;
-				g_pLog->debug("Adding DlcData for %u\n", parentId);
+				g_pLog->debug("Adding DlcData for %u", parentId);
 
 				for(auto& dlc : app.second)
 				{
@@ -235,7 +235,7 @@ bool CConfig::loadSettings()
 					const std::string dlcName = dlc.second.as<std::string>();
 
 					data.dlcIds[dlcId] = dlcName;
-					g_pLog->debug("DlcId %u -> %s\n", dlcId, dlcName.c_str());
+					g_pLog->debug("DlcId %u -> %s", dlcId, dlcName.c_str());
 				}
 
 				dlcData[parentId] = data;
@@ -268,7 +268,7 @@ bool CConfig::loadSettings()
 					denuvoGames[steamId].emplace(appId);
 
 					//Again, not loggin SteamId because of privacy
-					g_pLog->debug("Added DenuvoGame %u\n", appId);
+					g_pLog->debug("Added DenuvoGame %u", appId);
 				}
 			}
 			catch (...)
@@ -296,7 +296,7 @@ bool CConfig::addAdditionalAppId(uint32_t appId)
 		return false;
 
 	addedAppIds.emplace(appId);
-	g_pLog->once("Force owned %u\n", appId); //once is unnessecary but just for consistency
+	g_pLog->once("Force owned %u", appId); //once is unnessecary but just for consistency
 	return true;
 }
 
@@ -315,7 +315,7 @@ bool CConfig::shouldExcludeAppId(uint32_t appId)
 		exclude = !isAddedAppId(appId) && ((useWhiteList && !found) || (!useWhiteList && found));
 	}
 
-	g_pLog->once("shouldExcludeAppId(%u) -> %i\n", appId, exclude);
+	g_pLog->once("shouldExcludeAppId(%u) -> %i", appId, exclude);
 	return exclude;
 }
 
@@ -325,7 +325,7 @@ uint32_t CConfig::getDenuvoGameOwner(uint32_t appId)
 	{
 		if (tpl.second.contains(appId))
 		{
-			//g_pLog->once("%u is DenuvoGame\n", appId);
+			//g_pLog->once("%u is DenuvoGame", appId);
 			return tpl.first;
 		}
 	}

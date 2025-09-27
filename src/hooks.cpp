@@ -70,7 +70,7 @@ void DetourHook<OriginalFnT, HookFnT>::place()
 	// MemHlp::fixPICThunkCall removed as it's not needed on 32-bit Windows.
 	g_pLog->debug
 	(
-		"Detour hooked %s (%p) with hook at %p and tramp at %p\n",
+		"Detour hooked %s (%p) with hook at %p and tramp at %p",
 		this->name.c_str(),
 		this->originalFn.address,
 		this->hookFn.address,
@@ -89,7 +89,7 @@ void DetourHook<OriginalFnT, HookFnT>::remove()
 	LM_UnhookCode(this->originalFn.address, this->tramp.address, this->size);
 	this->size = 0;
 
-	g_pLog->debug("Unhooked %s\n", this->name.c_str());
+	g_pLog->debug("Unhooked %s", this->name.c_str());
 }
 
 template<typename OriginalFnT, typename HookFnT>
@@ -100,7 +100,7 @@ void VFTHook<OriginalFnT, HookFnT>::place()
 
 	g_pLog->debug
 	(
-		"VFT hooked %s (%p) with hook at %p\n",
+		"VFT hooked %s (%p) with hook at %p",
 		this->name.c_str(),
 		this->originalFn.address,
 		this->hookFn.address
@@ -120,7 +120,7 @@ void VFTHook<OriginalFnT, HookFnT>::remove()
 	LM_VmtUnhook(this->vft.get(), this->index);
 	this->hooked = false;
 
-	g_pLog->debug("Unhooked %s!\n", this->name.c_str());
+	g_pLog->debug("Unhooked %s!", this->name.c_str());
 }
 
 template<typename OriginalFnT, typename HookFnT>
@@ -139,7 +139,7 @@ static void hkLogSteamPipeCall(const char* iface, const char* fn)
 
 	if (g_config.extendedLogging)
 	{
-		g_pLog->debug("LogSteamPipeCall(%s, %s)\n", iface, fn);
+		g_pLog->debug("LogSteamPipeCall(%s, %s)", iface, fn);
 	}
 }
 
@@ -151,7 +151,7 @@ static bool hkCheckAppOwnership(void* a0, uint32_t appId, CAppOwnershipInfo* pOw
 	const bool ret = Hooks::CheckAppOwnership.tramp.fn(a0, appId, pOwnershipInfo);
 
 	//Do not log pOwnershipInfo because it gets deleted very quickly, so it's pretty much useless in the logs
-	g_pLog->once("CheckAppOwnership(%p, %u) -> %i\n", a0, appId, ret);
+	g_pLog->once("CheckAppOwnership(%p, %u) -> %i", a0, appId, ret);
 
 	//Wait Until GetSubscribedApps gets called once to let Steam request and populate legit data first.
 	//Afterwards modifying should hopefully not affect false positives anymore
@@ -165,7 +165,7 @@ static bool hkCheckAppOwnership(void* a0, uint32_t appId, CAppOwnershipInfo* pOw
 	if (!g_config.denuvoSpoof && denuvoOwner && denuvoOwner != g_currentSteamId) 
 	{
 		//Would love to log the SteamId, but for users anonymity I won't
-		g_pLog->once("Skipping %u because it's a Denuvo game from someone else\n", appId);
+		g_pLog->once("Skipping %u because it's a Denuvo game from someone else", appId);
 		return ret;
 	}
 	
@@ -239,7 +239,7 @@ void* FASTCALL_TYPE hkClientAppManager_LaunchApp(void* pClientAppManager, void* 
 {
 	if (pAppId)
 	{
-		g_pLog->once("IClientAppManager::LaunchApp(%p, %u, %p, %p, %p)\n", pClientAppManager, *pAppId, a2, a3, a4);
+		g_pLog->once("IClientAppManager::LaunchApp(%p, %u, %p, %p, %p)", pClientAppManager, *pAppId, a2, a3, a4);
 		appIdOwnerOverride[*pAppId] = 0;
 	}
 
@@ -250,13 +250,13 @@ void* FASTCALL_TYPE hkClientAppManager_LaunchApp(void* pClientAppManager, void* 
 bool FASTCALL_TYPE hkClientAppManager_IsAppDlcInstalled(void* pClientAppManager, void* /*edx_dummy*/, uint32_t appId, uint32_t dlcId)
 {
 	const bool ret = Hooks::IClientAppManager_IsAppDlcInstalled.originalFn.fn(pClientAppManager, appId, dlcId);
-	g_pLog->once("IClientAppManager::IsAppDlcInstalled(%p, %u, %u) -> %i\n", pClientAppManager, appId, dlcId, ret);
+	g_pLog->once("IClientAppManager::IsAppDlcInstalled(%p, %u, %u) -> %i", pClientAppManager, appId, dlcId, ret);
 
 	//Do not pretend things are installed while downloading Apps, otherwise downloads will break for some of them
 	auto state = g_pClientAppManager->getAppInstallState(appId);
 	if (state & APPSTATE_DOWNLOADING || state & APPSTATE_INSTALLING)
 	{
-		g_pLog->once("Skipping DlcId %u because AppId %u has AppState %i\n", dlcId, appId, state);
+		g_pLog->once("Skipping DlcId %u because AppId %u has AppState %i", dlcId, appId, state);
 		return ret;
 	}
 
@@ -271,7 +271,7 @@ bool FASTCALL_TYPE hkClientAppManager_IsAppDlcInstalled(void* pClientAppManager,
 bool FASTCALL_TYPE hkClientAppManager_BIsDlcEnabled(void* pClientAppManager, void* /*edx_dummy*/, uint32_t appId, uint32_t dlcId, void* a3)
 {
 	const bool ret = Hooks::IClientAppManager_BIsDlcEnabled.originalFn.fn(pClientAppManager, appId, dlcId, a3);
-	g_pLog->once("IClientAppManager::BIsDlcEnabled(%p, %u, %u, %p) -> %i\n", pClientAppManager, appId, dlcId, a3, ret);
+	g_pLog->once("IClientAppManager::BIsDlcEnabled(%p, %u, %u, %p) -> %i", pClientAppManager, appId, dlcId, a3, ret);
 
 	//TODO: Add check for legit ownership to allow toggle on/off
 	if (g_config.shouldExcludeAppId(dlcId))
@@ -285,11 +285,11 @@ bool FASTCALL_TYPE hkClientAppManager_BIsDlcEnabled(void* pClientAppManager, voi
 bool FASTCALL_TYPE hkClientAppManager_GetUpdateInfo(void* pClientAppManager, void* /*edx_dummy*/, uint32_t appId, uint32_t* a2)
 {
 	const bool success = Hooks::IClientAppManager_GetAppUpdateInfo.originalFn.fn(pClientAppManager, appId, a2);
-	g_pLog->info("IClientAppManager::GetUpdateInfo(%p, %u, %p) -> %i\n", pClientAppManager, appId, a2, success);
+	g_pLog->info("IClientAppManager::GetUpdateInfo(%p, %u, %p) -> %i", pClientAppManager, appId, a2, success);
 
 	if (g_config.isAddedAppId(appId))
 	{
-		g_pLog->once("Disabled updates for %u\n", appId);
+		g_pLog->once("Disabled updates for %u", appId);
 		return false;
 	}
 
@@ -313,7 +313,7 @@ void FASTCALL_TYPE hkClientAppManager_PipeLoop(void* pClientAppManager, void* /*
 	Hooks::IClientAppManager_LaunchApp.place();
 	Hooks::IClientAppManager_IsAppDlcInstalled.place();
 
-	g_pLog->debug("IClientAppManager->vft at %p\n", vft->vtable);
+	g_pLog->debug("IClientAppManager->vft at %p", vft->vtable);
 
 	Hooks::IClientAppManager_PipeLoop.remove();
 	Hooks::IClientAppManager_PipeLoop.originalFn.fn(pClientAppManager, a1, a2, a3);
@@ -327,7 +327,7 @@ unsigned int FASTCALL_TYPE hkClientApps_GetDLCCount(void* pClientApps, void* /*e
 		count = g_config.dlcData[appId].dlcIds.size();
 	}
 
-	g_pLog->once("IClientApps::GetDLCCount(%p, %u) -> %u\n", pClientApps, appId, count);
+	g_pLog->once("IClientApps::GetDLCCount(%p, %u) -> %u", pClientApps, appId, count);
 	return count;
 }
 
@@ -353,7 +353,7 @@ bool FASTCALL_TYPE hkClientApps_GetDLCDataByIndex(void* pClientApps, void* /*edx
 		ret = Hooks::IClientApps_GetDLCDataByIndex.originalFn.fn(pClientApps, appId, dlcIndex, pDlcId, pIsAvailable, pChDlcName, dlcNameLen);
 	}
 
-	g_pLog->once("IClientApps::GetDLCDataByIndex(%p, %u, %i, %p, %p, %s, %i) -> %i\n", pClientApps, appId, dlcIndex, pDlcId, pIsAvailable, pChDlcName, dlcNameLen, ret);
+	g_pLog->once("IClientApps::GetDLCDataByIndex(%p, %u, %i, %p, %p, %s, %i) -> %i", pClientApps, appId, dlcIndex, pDlcId, pIsAvailable, pChDlcName, dlcNameLen, ret);
 
 	if (pIsAvailable && pDlcId && !g_config.shouldExcludeAppId(*pDlcId))
 	{
@@ -376,7 +376,7 @@ void FASTCALL_TYPE hkClientApps_PipeLoop(void* pClientApps, void* /*edx_dummy*/,
 	Hooks::IClientApps_GetDLCDataByIndex.place();
 	Hooks::IClientApps_GetDLCCount.place();
 
-	g_pLog->debug("IClientApps->vft at %p\n", vft->vtable);
+	g_pLog->debug("IClientApps->vft at %p", vft->vtable);
 
 	Hooks::IClientApps_PipeLoop.remove();
 	Hooks::IClientApps_PipeLoop.originalFn.fn(pClientApps, a1, a2, a3);
@@ -385,11 +385,11 @@ void FASTCALL_TYPE hkClientApps_PipeLoop(void* pClientApps, void* /*edx_dummy*/,
 bool FASTCALL_TYPE hkClientRemoteStorage_IsCloudEnabledForApp(void* pClientRemoteStorage, void* /*edx_dummy*/, uint32_t appId)
 {
 	const bool enabled = Hooks::IClientRemoteStorage_IsCloudEnabledForApp.originalFn.fn(pClientRemoteStorage, appId);
-	g_pLog->once("IClientRemoteStorage::IsCloudEnabledForApp(%p, %u) -> %i\n", pClientRemoteStorage, appId, enabled);
+	g_pLog->once("IClientRemoteStorage::IsCloudEnabledForApp(%p, %u) -> %i", pClientRemoteStorage, appId, enabled);
 
 	if (g_config.isAddedAppId(appId))
 	{
-		g_pLog->once("Disabled cloud for %u\n", appId);
+		g_pLog->once("Disabled cloud for %u", appId);
 		return false;
 	}
 
@@ -404,7 +404,7 @@ void FASTCALL_TYPE hkClientRemoteStorage_PipeLoop(void* pClientRemoteStorage, vo
 	Hooks::IClientRemoteStorage_IsCloudEnabledForApp.setup(vft, VFTIndexes::IClientRemoteStorage::IsCloudEnabledForApp, hkClientRemoteStorage_IsCloudEnabledForApp);
 	Hooks::IClientRemoteStorage_IsCloudEnabledForApp.place();
 
-	g_pLog->debug("IClientRemoteStorage->vft at %p\n", vft->vtable);
+	g_pLog->debug("IClientRemoteStorage->vft at %p", vft->vtable);
 
 	Hooks::IClientRemoteStorage_PipeLoop.remove();
 	Hooks::IClientRemoteStorage_PipeLoop.originalFn.fn(pClientRemoteStorage, a1, a2, a3);
@@ -414,7 +414,7 @@ bool FASTCALL_TYPE hkClientUser_BIsSubscribedApp(void* pClientUser, void* /*edx_
 {
 	const bool ret = Hooks::IClientUser_BIsSubscribedApp.tramp.fn(pClientUser, appId);
 
-	g_pLog->once("IClientUser::BIsSubscribedApp(%p, %u) -> %i\n", pClientUser, appId, ret);
+	g_pLog->once("IClientUser::BIsSubscribedApp(%p, %u) -> %i", pClientUser, appId, ret);
 
 	if (g_config.shouldExcludeAppId(appId))
 	{
@@ -427,9 +427,9 @@ bool FASTCALL_TYPE hkClientUser_BIsSubscribedApp(void* pClientUser, void* /*edx_
 uint8_t FASTCALL_TYPE hkClientUser_IsUserSubscribedAppInTicket(void* pClientUser, void* /*edx_dummy*/, uint32_t steamId, uint32_t a2, uint32_t a3, uint32_t appId)
 {
 	const uint8_t ticketState = Hooks::IClientUser_IsUserSubscribedAppInTicket.tramp.fn(pClientUser, steamId, a2, a3, appId);
-	//g_pLog->once("IClientUser::IsUserSubscribedAppInTicket(%p, %u, %u, %u, %u) -> %i\n", pClientUser, steamId, a2, a3, appId, ticketState);
+	//g_pLog->once("IClientUser::IsUserSubscribedAppInTicket(%p, %u, %u, %u, %u) -> %i", pClientUser, steamId, a2, a3, appId, ticketState);
 	//Don't log the steamId, protect users from themselves and stuff
-	g_pLog->once("IClientUser::IsUserSubscribedAppInTicket(%p, %u, %u, %u) -> %i\n", pClientUser, a2, a3, appId, ticketState);
+	g_pLog->once("IClientUser::IsUserSubscribedAppInTicket(%p, %u, %u, %u) -> %i", pClientUser, a2, a3, appId, ticketState);
 	
 	//Might want to compare the steamId param to the g_currentSteamId in the future
 	//Although not doing that might also work for Dedicated servers?
@@ -445,7 +445,7 @@ uint8_t FASTCALL_TYPE hkClientUser_IsUserSubscribedAppInTicket(void* pClientUser
 uint32_t FASTCALL_TYPE hkClientUser_GetSubscribedApps(void* pClientUser, void* /*edx_dummy*/, uint32_t* pAppList, size_t size, bool a3)
 {
 	uint32_t count = Hooks::IClientUser_GetSubscribedApps.tramp.fn(pClientUser, pAppList, size, a3);
-	g_pLog->once("IClientUser::GetSubscribedApps(%p, %p, %i, %i) -> %i\n", pClientUser, pAppList, size, a3, count);
+	g_pLog->once("IClientUser::GetSubscribedApps(%p, %p, %i, %i) -> %i", pClientUser, pAppList, size, a3, count);
 
 	//Valve calls this function twice, once with size of 0 then again
 	if (!size || !pAppList)
@@ -465,11 +465,11 @@ uint32_t FASTCALL_TYPE hkClientUser_GetSubscribedApps(void* pClientUser, void* /
 bool FASTCALL_TYPE hkClientUser_RequiresLegacyCDKey(void* pClientUser, void* /*edx_dummy*/, uint32_t appId, uint32_t* a2)
 {
 	const bool requiresKey = Hooks::IClientUser_RequiresLegacyCDKey.tramp.fn(pClientUser, appId, a2);
-	g_pLog->once("IClientUser::RequiresLegacyCDKey(%p, %u, %u) -> %i\n", pClientUser, appId, a2, requiresKey);
+	g_pLog->once("IClientUser::RequiresLegacyCDKey(%p, %u, %u) -> %i", pClientUser, appId, a2, requiresKey);
 		
 	if (requiresKey && g_config.isAddedAppId(appId))
 	{
-		g_pLog->once("Disable CD Key for %u\n", appId);
+		g_pLog->once("Disable CD Key for %u", appId);
 		return false;
 	}
 
@@ -493,11 +493,11 @@ static bool createAndPlaceSteamIdHook()
 	hkGetSteamId = LM_AllocMemory(0, LM_PROT_XRW);
 	if (hkGetSteamId == LM_ADDRESS_BAD)
 	{
-		g_pLog->debug("Failed to allocate memory for GetSteamId!\n");
+		g_pLog->debug("Failed to allocate memory for GetSteamId!");
 		return false;
 	}
 
-	g_pLog->debug("Allocated memory for GetSteamId hook at %p\n", hkGetSteamId);
+	g_pLog->debug("Allocated memory for GetSteamId hook at %p", hkGetSteamId);
 
 	auto insts = std::vector<lm_inst_t>();
 	lm_address_t readAddr = Hooks::IClientUser_GetSteamId;
@@ -506,7 +506,7 @@ static bool createAndPlaceSteamIdHook()
 		lm_inst_t inst;
 		if (!LM_Disassemble(readAddr, &inst)) 
 		{
-			g_pLog->debug("Failed to disassemble function at %p!\n", readAddr);
+			g_pLog->debug("Failed to disassemble function at %p!", readAddr);
 			return false;
 		}
 
@@ -521,7 +521,7 @@ static bool createAndPlaceSteamIdHook()
 
 	const unsigned int retIdx = insts.size() - 1;
 
-	g_pLog->debug("Ret is instruction number %u\n", retIdx);
+	g_pLog->debug("Ret is instruction number %u", retIdx);
 	//TODO: Create InlineHook class for this
 	size_t totalBytes = 0;
 	unsigned int instsToOverwrite = 0;
@@ -549,11 +549,11 @@ static bool createAndPlaceSteamIdHook()
 		memcpy(reinterpret_cast<void*>(writeAddr), inst.bytes, inst.size);
 
 		writeAddr += inst.size;
-		g_pLog->debug("Copied %s %s to tramp\n", inst.mnemonic, inst.op_str);
+		g_pLog->debug("Copied %s %s to tramp", inst.mnemonic, inst.op_str);
 	}
 
 	lm_address_t jmpAddr = insts.at(insts.size() - instsToOverwrite).address;
-	g_pLog->debug("Placing jmp at %p\n", jmpAddr);
+	g_pLog->debug("Placing jmp at %p", jmpAddr);
 
 	//Might be worth to convert to LM_AssembleEx, but whatever
 	lm_prot_t oldProt;
@@ -596,7 +596,7 @@ namespace Hooks
 
 bool Hooks::setup()
 {
-	g_pLog->debug("Hooks::setup()\n");
+	g_pLog->debug("Hooks::setup()");
 
 	IClientUser_GetSteamId = MemHlp::searchSignature("IClientUser::GetSteamId", Patterns::GetSteamId, g_modSteamClient, MemHlp::SigFollowMode::Relative);
 

@@ -72,19 +72,19 @@ lm_address_t MemHlp::searchSignature(const char* name, const char* signature, lm
 	lm_address_t address = patternScan(signature, module);
 	if (address == LM_ADDRESS_BAD)
 	{
-		g_pLog->debug("Unable to find signature for %s!\n", name);
+		g_pLog->debug("Unable to find signature for %s!", name);
 	}
 	else
 	{
 		switch (mode)
 		{
 			case SigFollowMode::Relative:
-				g_pLog->debug("Resolving relative of %s at %p\n", name, address);
+				g_pLog->debug("Resolving relative of %s at %p", name, address);
 				address = MemHlp::getJmpTarget(address);
 				break;
 
 			case SigFollowMode::PrologueUpwards:
-				g_pLog->debug("Searching function prologue of %s from %p\n", name, address);
+				g_pLog->debug("Searching function prologue of %s from %p", name, address);
 				address = MemHlp::findPrologue(address, static_cast<lm_byte_t*>(extraData), extraDataSize);
 				break;
 
@@ -92,7 +92,7 @@ lm_address_t MemHlp::searchSignature(const char* name, const char* signature, lm
 				break;
 		}
 
-		g_pLog->info("%s at %p\n", name, address);
+		g_pLog->info("%s at %p", name, address);
 	}
 
 	return address;
@@ -117,7 +117,7 @@ lm_address_t MemHlp::getJmpTarget(lm_address_t address)
 		return LM_ADDRESS_BAD;
 	}
 
-	g_pLog->debug("Resolved to %s %s\n", inst.mnemonic, inst.op_str);
+	g_pLog->debug("Resolved to %s %s", inst.mnemonic, inst.op_str);
 
 	if (strcmp(inst.mnemonic, "jmp") != 0 && strcmp(inst.mnemonic, "call") != 0)
 		return LM_ADDRESS_BAD;
@@ -144,18 +144,18 @@ lm_address_t MemHlp::findPrologue(lm_address_t address, lm_byte_t* prologueBytes
 		if (found)
 		{
 			lm_address_t prol = address - i - prologueSize + 1; //Add 1 byte back since bytesSize would be to big otherwise
-			g_pLog->debug("Prologue found at %p\n", prol);
+			g_pLog->debug("Prologue found at %p", prol);
 			return prol;
 		}
 	}
 
-	g_pLog->debug("Unable to find prologue after going up %p bytes!\n", scanSize);
+	g_pLog->debug("Unable to find prologue after going up %p bytes!", scanSize);
 	return LM_ADDRESS_BAD;
 }
 
 bool MemHlp::fixPICThunkCall(const char* name, lm_address_t fn, lm_address_t tramp)
 {
-	g_pLog->debug("Fixing PIC thunks for %s's trampoline\n", name);
+	g_pLog->debug("Fixing PIC thunks for %s's trampoline", name);
 	constexpr unsigned int maxBytes = 0x5; //Minimum bytes needed to detour a function, so our tramp will at least be of this size
 	
 	lm_inst_t inst;
@@ -165,12 +165,12 @@ bool MemHlp::fixPICThunkCall(const char* name, lm_address_t fn, lm_address_t tra
 
 		if (!LM_Disassemble(startAddress, &inst))
 		{
-			g_pLog->debug("Unable to dissassemble code at %p\n", tramp + curTrampOffset);
+			g_pLog->debug("Unable to dissassemble code at %p", tramp + curTrampOffset);
 			return false;
 		}
 		
 		curTrampOffset += inst.size;
-		g_pLog->debug("%p: %s %s\n", inst.address, inst.mnemonic, inst.op_str);
+		g_pLog->debug("%p: %s %s", inst.address, inst.mnemonic, inst.op_str);
 		
 		if (strcmp(inst.mnemonic, "call") != 0)
 			continue;
@@ -184,13 +184,13 @@ bool MemHlp::fixPICThunkCall(const char* name, lm_address_t fn, lm_address_t tra
 		{
 			if (!LM_Disassemble(followAddress, &inst))
 			{
-				g_pLog->debug("Unable to dissassemble code at %p\n", followAddress);
+				g_pLog->debug("Unable to dissassemble code at %p", followAddress);
 				return false;
 			}
 
 			followAddress += inst.size;
 
-			g_pLog->debug("%p: %s %s\n", inst.address, inst.mnemonic, inst.op_str);
+			g_pLog->debug("%p: %s %s", inst.address, inst.mnemonic, inst.op_str);
 
 			//Can not declare in switch statement
 			auto splits = std::vector<std::string>();
@@ -221,7 +221,7 @@ bool MemHlp::fixPICThunkCall(const char* name, lm_address_t fn, lm_address_t tra
 
 		if(!LM_Assemble(newInstr, &inst))
 		{
-			printf("Unable to assemble instruction %s!\n", newInstr);
+			printf("Unable to assemble instruction %s!", newInstr);
 			return false;
 		}
 
@@ -229,7 +229,7 @@ bool MemHlp::fixPICThunkCall(const char* name, lm_address_t fn, lm_address_t tra
 		LM_ProtMemory(startAddress, inst.size, LM_PROT_XRW, &oldProt);
 		LM_WriteMemory(startAddress, inst.bytes, inst.size);
 		LM_ProtMemory(startAddress, inst.size, oldProt, nullptr);
-		g_pLog->debug("Replaced PIC thunk call for %s at %p with %s\n", name, followAddress, newInstr);
+		g_pLog->debug("Replaced PIC thunk call for %s at %p with %s", name, followAddress, newInstr);
 		return true;
 	}
 

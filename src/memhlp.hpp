@@ -29,16 +29,16 @@ namespace MemHlp
 		static lm_inst_t inst;
 		if (!LM_Assemble(code, &inst))
 		{
-			g_pLog->debug("Failed to assemble %s!\n", code);
+			g_pLog->debug("Failed to assemble %s!", code);
 			return false;
 		}
 		if (address != LM_ADDRESS_BAD && !LM_WriteMemory(address, inst.bytes, inst.size))
 		{
-			g_pLog->debug("Failed to write %s to %p!\n", code, address);
+			g_pLog->debug("Failed to write %s to %p!", code, address);
 			return false;
 		}
 
-		g_pLog->debug("Wrote %s to %p with %i bytes\n", code, address, inst.size);
+		g_pLog->debug("Wrote %s to %p with %i bytes", code, address, inst.size);
 		address += inst.size;
 		return true;
 	}

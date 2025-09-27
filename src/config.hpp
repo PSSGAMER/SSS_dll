@@ -60,7 +60,7 @@ public:
 		}
 		catch (YAML::BadConversion&)
 		{
-			g_pLog->notify("Failed to parse value of %s! Using default\n", name);
+			g_pLog->notify("Failed to parse value of %s! Using default", name);
 			return defVal;
 		}
 	};

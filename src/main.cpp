@@ -27,7 +27,7 @@ static bool verifySteamClientHash()
 
 	g_pLog->info
 	(
-		"steamclient.dll loaded from %s\\%s at %p to %p\n",
+		"steamclient.dll loaded from %s\\%s at %p to %p",
 		dir.filename().string().c_str(),
 		path.filename().string().c_str(),
 		g_modSteamClient.base,
@@ -37,13 +37,13 @@ static bool verifySteamClientHash()
 	try
 	{
 		std::string sha256 = Utils::getFileSHA256(path.string().c_str());
-		g_pLog->info("steamclient.dll hash is %s\n", sha256.c_str());
+		g_pLog->info("steamclient.dll hash is %s", sha256.c_str());
 
 		return strcmp(sha256.c_str(), EXPECTED_STEAMCLIENT_HASH) == 0;
 	}
 	catch(const std::runtime_error& err)
 	{
-		g_pLog->warn("Unable to read steamclient.dll hash: %s\n", err.what());
+		g_pLog->warn("Unable to read steamclient.dll hash: %s", err.what());
 		return false;
 	}
 }
@@ -69,12 +69,12 @@ static bool setup()
 		return false;
 	}
 
-	g_pLog->debug("SuperSexySteam loading in %s\n", proc.name);
+	g_pLog->debug("SuperSexySteam loading in %s", proc.name);
 
 
 	if(!g_config.init())
 	{
-		g_pLog->warn("Failed to initialize config.\n");
+		g_pLog->warn("Failed to initialize config.");
 		return false;
 	}
 
@@ -87,7 +87,7 @@ static void load()
 	// This check is already performed in the Init thread before calling load()
 	if (!LM_FindModule("steamclient.dll", &g_modSteamClient))
 	{
-		g_pLog->warn("load() called but steamclient.dll not found!\n");
+		g_pLog->warn("load() called but steamclient.dll not found!");
 		return;
 	}
 	*/
@@ -96,18 +96,18 @@ static void load()
 	{
 		if (g_config.safeMode)
 		{
-			g_pLog->warn("Unknown steamclient.dll hash! Aborting in safe mode...\n");
+			g_pLog->warn("Unknown steamclient.dll hash! Aborting in safe mode...");
 			return;
 		}
 		else if (g_config.warnHashMissmatch)
 		{
-			g_pLog->warn("steamclient.dll hash mismatch! Please update the expected hash if this is a new version.\n");
+			g_pLog->warn("steamclient.dll hash mismatch! Please update the expected hash if this is a new version.");
 		}
 	}
 
 	if (!Hooks::setup())
 	{
-		g_pLog->warn("Failed to setup hooks!\n");
+		g_pLog->warn("Failed to setup hooks!");
 		return;
 	}
 
@@ -129,7 +129,7 @@ DWORD WINAPI Init(LPVOID lpParam)
 		FreeLibraryAndExitThread(g_hModule, 1);
 	}
 
-	g_pLog->info("Waiting for steamclient.dll to be loaded...\n");
+	g_pLog->info("Waiting for steamclient.dll to be loaded...");
 
 	while (!LM_FindModule("steamclient.dll", &g_modSteamClient))
 	{
@@ -138,7 +138,7 @@ DWORD WINAPI Init(LPVOID lpParam)
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}
 
-	g_pLog->info("steamclient.dll found. Proceeding with loading hooks.\n");
+	g_pLog->info("steamclient.dll found. Proceeding with loading hooks.");
 
 	load();
 
@@ -169,7 +169,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 		{
 			if (g_pLog)
 			{
-				g_pLog->info("Unloading SuperSexySteam...\n");
+				g_pLog->info("Unloading SuperSexySteam...");
 			}
 			Hooks::remove();
 			break;
