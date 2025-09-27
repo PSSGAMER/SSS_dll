@@ -57,6 +57,13 @@ class CLog
 		if (!formatted) return; // Always check malloc result
 		snprintf(formatted, size, msg, args...);
 
+		// Trim a single trailing newline if it exists
+		size_t len = strlen(formatted);
+		if (len > 0 && formatted[len - 1] == '\n')
+		{
+			formatted[len - 1] = '\0';
+		}
+
 		bool freeFormatted = true;
 		if (lvl == LogLevel::Once)
 		{

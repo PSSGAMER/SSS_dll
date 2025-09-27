@@ -49,9 +49,8 @@ set_target_properties(SuperSexySteam PROPERTIES
 # Add the 'include' directory for headers.
 target_include_directories(SuperSexySteam SYSTEM PUBLIC include)
 
-# Define preprocessor macros for static linking.
-# yaml-cpp uses a standard macro to enable static linking.
-target_compile_definitions(SuperSexySteam PRIVATE YAML_CPP_STATIC_DEFINE)
+# Statically add yaml-cpp and libmem
+target_compile_definitions(SuperSexySteam PRIVATE YAML_CPP_STATIC_DEFINE LM_EXPORT)
 
 # --- Optional Toolchain Accelerators (ccache, mold) ---
 
@@ -111,6 +110,7 @@ endif()
 # =============================================================================
 # Dependencies
 # =============================================================================
+# --- System Libraries ---
 if(MSVC)
     # On Windows, we use the built-in Cryptography API (CNG).
     target_link_libraries(SuperSexySteam PRIVATE Bcrypt)
@@ -121,38 +121,38 @@ elseif(GCC)
     target_link_libraries(SuperSexySteam PRIVATE OpenSSL::SSL OpenSSL::Crypto)
 endif()
 
-# --- Find and link Pre-compiled Local Libraries ---
+# --- Pre-compiled Local Libraries ---
 
-# Define an IMPORTED target for libmem
-add_library(Libs::mem UNKNOWN IMPORTED)
-find_library(LIBMEM_LIBRARY_PATH libmem
-    PATHS "${CMAKE_CURRENT_SOURCE_DIR}/lib"
-    NO_DEFAULT_PATH
-)
-if(NOT LIBMEM_LIBRARY_PATH)
-    message(FATAL_ERROR "Could not find the libmem library in the 'lib/' directory.")
-endif()
+# --- libmem ---
+# Create an IMPORTED target for our static libmem.lib
+add_library(Libs::mem STATIC IMPORTED)
+
+# Find the library file in our 'lib' directory and set its location.
+find_library(LIBMEM_LIBRARY_PATH NAMES libmem HINTS "${CMAKE_CURRENT_SOURCE_DIR}/lib")
 set_target_properties(Libs::mem PROPERTIES IMPORTED_LOCATION "${LIBMEM_LIBRARY_PATH}")
-message(STATUS "Found and configured local libmem: ${LIBMEM_LIBRARY_PATH}")
 
-# Define an IMPORTED target for yaml-cpp (assuming it's a static library)
-add_library(Libs::yaml-cpp STATIC IMPORTED)
-find_library(YAMLCPP_LIBRARY_PATH yaml-cpp
-    PATHS "${CMAKE_CURRENT_SOURCE_DIR}/lib"
-    NO_DEFAULT_PATH
+# Any target that links against Libs::mem will now also link against these.
+set_target_properties(Libs::mem PROPERTIES
+    INTERFACE_LINK_LIBRARIES "user32;psapi;ntdll;shell32"
 )
-if(NOT YAMLCPP_LIBRARY_PATH)
-    message(FATAL_ERROR "Could not find the yaml-cpp library in the 'lib/' directory.")
-endif()
-set_target_properties(Libs::yaml-cpp PROPERTIES IMPORTED_LOCATION "${YAMLCPP_LIBRARY_PATH}")
-message(STATUS "Found and configured local yaml-cpp: ${YAMLCPP_LIBRARY_PATH}")
+message(STATUS "Found local libmem: ${LIBMEM_LIBRARY_PATH}")
 
-# Link all found local libraries to the main target
+# --- yaml-cpp ---
+# Create an IMPORTED target for our static yaml-cpp.lib
+add_library(Libs::yaml-cpp STATIC IMPORTED)
+
+# Find the library file in our 'lib' directory and set its location.
+find_library(YAMLCPP_LIBRARY_PATH NAMES yaml-cpp HINTS "${CMAKE_CURRENT_SOURCE_DIR}/lib")
+set_target_properties(Libs::yaml-cpp PROPERTIES IMPORTED_LOCATION "${YAMLCPP_LIBRARY_PATH}")
+message(STATUS "Found local yaml-cpp: ${YAMLCPP_LIBRARY_PATH}")
+
+
+# --- Final Linking ---
+# Link all dependency targets to our main library.
 target_link_libraries(SuperSexySteam PRIVATE
     Libs::mem
     Libs::yaml-cpp
 )
-
 
 # =============================================================================
 # Installation Target

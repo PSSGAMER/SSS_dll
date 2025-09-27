@@ -18,7 +18,7 @@
 #include <stdexcept>
 #include <string>
 
-static const char* EXPECTED_STEAMCLIENT_HASH = "91b60769f5b05971144adbc02a584efa706817a4191d06d535ebab484f326c2d";
+static const char* EXPECTED_STEAMCLIENT_HASH = "df5f99a4b0bbb4ea5d32eb647c1806e2e6b0b6924dd8e52181b1e8a6b969c5ad";
 
 static bool verifySteamClientHash()
 {
@@ -83,13 +83,14 @@ static bool setup()
 
 static void load()
 {
-
+	/*
 	// This check is already performed in the Init thread before calling load()
 	if (!LM_FindModule("steamclient.dll", &g_modSteamClient))
 	{
 		g_pLog->warn("load() called but steamclient.dll not found!\n");
 		return;
 	}
+	*/
 
 	if (!verifySteamClientHash())
 	{
