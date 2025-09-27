@@ -5,6 +5,7 @@
 #include <memory>
 #include <filesystem>
 #include <stdexcept>
+#include <windows.h>
 
 namespace fs = std::filesystem;
 
@@ -39,25 +40,35 @@ bool CLog::shouldNotify()
 
 CLog* CLog::createDefaultLog()
 {
-	const char* appdata = getenv("APPDATA");
-	if (appdata)
+	try
 	{
-		try
+		wchar_t exePathBuffer[MAX_PATH];
+		if (GetModuleFileNameW(NULL, exePathBuffer, MAX_PATH) == 0)
 		{
-			fs::path logDir = fs::path(appdata) / "SuperSexySteam";
-
-			// This is safe to call even if the directory already exists.
-			fs::create_directory(logDir);
-
-			fs::path logFile = logDir / "SSS_dll.log";
-
-			return new CLog(logFile.string().c_str());
-		}
-		catch (const fs::filesystem_error& e)
-		{
-			fprintf(stderr, "Filesystem error creating log file: %s\n", e.what());
+			fprintf(stderr, "SuperSexySteam Error: GetModuleFileNameW failed.\n");
 			return nullptr;
 		}
+		
+		fs::path logDir = fs::path(exePathBuffer).parent_path();
+		logDir /= "config";
+		logDir /= "SuperSexySteam";
+
+		// Create the full directory path if it doesn't exist.
+		fs::create_directories(logDir);
+
+		fs::path logFile = logDir / "supersexysteam.log";
+
+		return new CLog(logFile.string().c_str());
+	}
+	catch (const fs::filesystem_error& e)
+	{
+		fprintf(stderr, "Filesystem error creating log file: %s\n", e.what());
+		return nullptr;
+	}
+	catch (const std::runtime_error& e)
+	{
+		fprintf(stderr, "Runtime error creating log file: %s\n", e.what());
+		return nullptr;
 	}
 
 	return nullptr;

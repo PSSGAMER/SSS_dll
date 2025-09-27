@@ -64,29 +64,17 @@ static const char* defaultConfig =
 
 std::string CConfig::getDir()
 {
-	HKEY hKey;
-		// Open the registry key to read Steam's installation path.
-	if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\WOW6432Node\\Valve\\Steam", 0, KEY_READ, &hKey) != ERROR_SUCCESS)
+	wchar_t exePathBuffer[MAX_PATH];
+
+	// Get the full path of the host executable (e.g., steam.exe).
+	if (GetModuleFileNameW(NULL, exePathBuffer, MAX_PATH) == 0)
 	{
-		g_pLog->notify("Could not find Steam's registry key. Config cannot be loaded or created.");
+		g_pLog->notify("Could not get host executable path. Config cannot be loaded or created.");
 		return "";
 	}
 
-	wchar_t steamPathBuffer[MAX_PATH];
-	DWORD bufferSize = sizeof(steamPathBuffer);
-
-	// Query the "InstallPath" value from the opened key.
-	if (RegQueryValueExW(hKey, L"InstallPath", NULL, NULL, (LPBYTE)steamPathBuffer, &bufferSize) != ERROR_SUCCESS)
-	{
-		RegCloseKey(hKey);
-		g_pLog->notify("Could not read Steam's InstallPath value from registry.");
-		return "";
-    }
-	RegCloseKey(hKey);
-
-	// std::filesystem::path can be constructed directly from a wide-character string.
-	// .string() will correctly convert the path to a UTF-8 encoded std::string.
-	std::filesystem::path configPath(steamPathBuffer);
+	// Get the directory containing the executable and append the config path.
+	std::filesystem::path configPath = std::filesystem::path(exePathBuffer).parent_path();
 	configPath /= "config";
 	configPath /= "SuperSexySteam";
 
