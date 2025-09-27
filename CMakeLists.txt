@@ -62,8 +62,8 @@ if(CCACHE_FOUND)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ${CCACHE_FOUND})
 endif()
 
-# Automatically use mold linker if found (non-MSVC).
-if(NOT MSVC)
+# Automatically use mold linker if found (GCC).
+if(GCC)
     find_program(MOLD_FOUND mold)
     if(MOLD_FOUND)
         message(STATUS "mold linker found, using for faster linking.")
@@ -76,7 +76,7 @@ endif()
 if(MSVC)
     target_compile_options(SuperSexySteam PRIVATE /W4)
     target_compile_definitions(SuperSexySteam PRIVATE _CRT_SECURE_NO_WARNINGS)
-else()
+elseif(GCC)
     target_compile_options(SuperSexySteam PRIVATE -Wall -Wextra -Wpedantic -Wno-error=format-security)
 endif()
 
@@ -87,7 +87,7 @@ if(MSVC)
     $<$<CONFIG:Release>:/O2>
     $<$<CONFIG:Release>:/GL>
     )
-elseif()
+elseif(GCC)
     # Apply GCC/Clang-specific optimization flags ONLY for the Release configuration.
     target_compile_options(SuperSexySteam PRIVATE
     $<$<CONFIG:Release>:-O3>
@@ -96,13 +96,13 @@ elseif()
 endif()
 
 # Note: For MSVC, /GL (Whole Program Optimization) is the equivalent of -flto.
-# It requires the linker flag /LTCG, which we'll add below.
+# It requires the linker flag /LTCG, which we add below.
 if(MSVC)
-    set_target_properties(SuperSexySteam PROPERTIES LINK_FLAGS_RELEASE "/LTCG")
+    target_link_options(SuperSexySteam PRIVATE $<$<CONFIG:Release>:/LTCG>)
 endif()
 
 # --- Add -march=native if the option is enabled ---
-if(SLS_ENABLE_NATIVE_OPTIMIZATIONS AND NOT MSVC)
+if(SLS_ENABLE_NATIVE_OPTIMIZATIONS AND GCC)
     target_compile_options(SuperSexySteam PRIVATE -march=native)
     message(STATUS "Native CPU-specific optimizations enabled.")
 endif()
@@ -115,7 +115,7 @@ if(MSVC)
     # On Windows, we use the built-in Cryptography API (CNG).
     target_link_libraries(SuperSexySteam PRIVATE Bcrypt)
     target_compile_definitions(SuperSexySteam PRIVATE USE_WINDOWS_CRYPTO)
-else()
+elseif(GCC)
     # On other platforms (e.g., Linux), we rely on OpenSSL.
     find_package(OpenSSL REQUIRED)
     target_link_libraries(SuperSexySteam PRIVATE OpenSSL::SSL OpenSSL::Crypto)
@@ -123,30 +123,34 @@ endif()
 
 # --- Find and link Pre-compiled Local Libraries ---
 
-# Find libmem in the local 'lib' directory
-find_library(LIBMEM_LIBRARY libmem
+# Define an IMPORTED target for libmem
+add_library(Libs::mem UNKNOWN IMPORTED)
+find_library(LIBMEM_LIBRARY_PATH libmem
     PATHS "${CMAKE_CURRENT_SOURCE_DIR}/lib"
     NO_DEFAULT_PATH
 )
-if(NOT LIBMEM_LIBRARY)
+if(NOT LIBMEM_LIBRARY_PATH)
     message(FATAL_ERROR "Could not find the libmem library in the 'lib/' directory.")
 endif()
-message(STATUS "Found local libmem: ${LIBMEM_LIBRARY}")
+set_target_properties(Libs::mem PROPERTIES IMPORTED_LOCATION "${LIBMEM_LIBRARY_PATH}")
+message(STATUS "Found and configured local libmem: ${LIBMEM_LIBRARY_PATH}")
 
-# Find yaml-cpp in the local 'lib' directory
-find_library(YAMLCPP_LIBRARY yaml-cpp
+# Define an IMPORTED target for yaml-cpp (assuming it's a static library)
+add_library(Libs::yaml-cpp STATIC IMPORTED)
+find_library(YAMLCPP_LIBRARY_PATH yaml-cpp
     PATHS "${CMAKE_CURRENT_SOURCE_DIR}/lib"
     NO_DEFAULT_PATH
 )
-if(NOT YAMLCPP_LIBRARY)
+if(NOT YAMLCPP_LIBRARY_PATH)
     message(FATAL_ERROR "Could not find the yaml-cpp library in the 'lib/' directory.")
 endif()
-message(STATUS "Found local yaml-cpp: ${YAMLCPP_LIBRARY}")
+set_target_properties(Libs::yaml-cpp PROPERTIES IMPORTED_LOCATION "${YAMLCPP_LIBRARY_PATH}")
+message(STATUS "Found and configured local yaml-cpp: ${YAMLCPP_LIBRARY_PATH}")
 
 # Link all found local libraries to the main target
 target_link_libraries(SuperSexySteam PRIVATE
-    ${LIBMEM_LIBRARY}
-    ${YAMLCPP_LIBRARY}
+    Libs::mem
+    Libs::yaml-cpp
 )
 
 
