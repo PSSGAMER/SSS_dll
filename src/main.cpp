@@ -117,32 +117,28 @@ static void load()
 }
 
 // This is the main function for our initialization thread.
-// It runs outside of the loader lock and handles setup and hooking.
 HMODULE g_hModule = NULL;
 DWORD WINAPI Init(LPVOID lpParam)
 {
 	// Global g_hModule that stores the dll path
 	g_hModule = static_cast<HMODULE>(lpParam); 
-	// 1. Run the initial setup.
 	if (!setup())
 	{
-		// If setup fails (e.g., not in steam.exe), we just exit the thread.
-		// No need to unload hooks because none have been placed.
-		return 0;
+		OutputDebugStringA("SuperSexySteam: setup() failed. Unloading DLL.");
+		FreeLibraryAndExitThread(g_hModule, 1);
 	}
 
 	g_pLog->info("Waiting for steamclient.dll to be loaded...\n");
 
-	// 2. Wait for steamclient.dll to be loaded into the process.
 	while (!LM_FindModule("steamclient.dll", &g_modSteamClient))
 	{
-		// Sleep for a short duration to avoid high CPU usage.
+		// Sleep for a short duration
+		// TODO: find a better way to detech steamclient.dll for loading
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}
 
 	g_pLog->info("steamclient.dll found. Proceeding with loading hooks.\n");
 
-	// 3. Once the module is found, run the main loading logic.
 	load();
 
 	return 0;
@@ -157,13 +153,9 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 		case DLL_PROCESS_ATTACH:
 		{
 			// This code runs when the DLL is first injected.
-
-			// Disable DLL_THREAD_ATTACH and DLL_THREAD_DETACH notifications.
-			// This is a performance optimization as we don't need them.
 			DisableThreadLibraryCalls(hModule);
 
-			// Create a new thread to run our initialization code.
-			// to prevent deadlocks (loader lock).
+			// Create a new thread to run our initialization code. to prevent deadlocks
 			HANDLE hThread = CreateThread(nullptr, 0, Init, hModule, 0, nullptr);
 			if (hThread)
 			{
@@ -174,7 +166,6 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 		}
 		case DLL_PROCESS_DETACH:
 		{
-			// This code runs when the DLL is being unloaded.
 			if (g_pLog)
 			{
 				g_pLog->info("Unloading SuperSexySteam...\n");
